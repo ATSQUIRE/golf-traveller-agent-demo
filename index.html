@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Golf Traveller Agent Demo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+html{color-scheme:light}
+body{margin:0}
+[hidden]{display:none!important}
+/* Layout: scenario rail on top, phone thread left, "behind the scenes" ledger right; stacks on phones */
+:root{
+  --bg:#EEF0EA; --surface:#F7F8F4; --ink:#12221C; --muted:#4A5650; --line:#D3D9CF;
+  --accent:#87602D; --accent-soft:#E9DFCC; --agent:#12221C; --agent-ink:#EEF0EA;
+  --guest:#D9DFD6; --guest-ink:#12221C; --sys:#E4E8E0; --ok:#2F6B4F; --phone:#FBFBF8;
+  --display:'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --body:'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1C17; --surface:#172821; --ink:#E9EDE6; --muted:#A9B6AE; --line:#2B4036;
+  --accent:#D3AA6E; --accent-soft:#2E2A1E; --agent:#24392F; --agent-ink:#EEF0EA;
+  --guest:#C9A066; --guest-ink:#12221C; --sys:#1E3229; --ok:#7FC29E; --phone:#12221C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1C17; --surface:#172821; --ink:#E9EDE6; --muted:#A9B6AE; --line:#2B4036;
+  --accent:#D3AA6E; --accent-soft:#2E2A1E; --agent:#24392F; --agent-ink:#EEF0EA;
+  --guest:#C9A066; --guest-ink:#12221C; --sys:#1E3229; --ok:#7FC29E; --phone:#12221C; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:28px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:16px;border-bottom:1px solid var(--line);padding-bottom:20px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin:0}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(34px,5vw,52px);line-height:1.02;margin:6px 0 8px;text-wrap:balance}
+.lede{margin:0;color:var(--muted);max-width:62ch}
+.legend{display:flex;flex-wrap:wrap;gap:8px;font-size:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted);background:var(--surface);white-space:nowrap}
+.chip b{color:var(--ink);font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.dot.dev{background:var(--accent)}
+nav{display:flex;flex-direction:column;gap:10px}
+.groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.group{display:flex;flex-direction:column;gap:6px}
+.group h2{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 12px;cursor:pointer;text-align:left}
+.tab:hover{border-color:var(--accent)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab:focus-visible,.ctl:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stage{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:820px){.stage{grid-template-columns:minmax(0,1fr)}}
+.phone{background:var(--phone);border:1px solid var(--line);border-radius:28px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.phone-top{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:15px;flex:none}
+.who{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.who b{font-size:14px}
+.who span{font-size:12px;color:var(--muted)}
+.thread{display:flex;flex-direction:column;gap:10px;padding:16px;min-height:460px;max-height:620px;overflow-y:auto}
+.msg{max-width:86%;border-radius:16px;padding:9px 13px;font-size:14px;line-height:1.45;animation:in .25s ease both}
+.msg.agent{background:var(--agent);color:var(--agent-ink);border-bottom-left-radius:4px;align-self:flex-start}
+.msg.guest{background:var(--guest);color:var(--guest-ink);border-bottom-right-radius:4px;align-self:flex-end}
+.msg .meta{display:block;font-size:11px;opacity:.75;margin-bottom:3px;letter-spacing:.02em}
+.sys{align-self:center;font-size:12px;color:var(--muted);background:var(--sys);border-radius:999px;padding:4px 12px;text-align:center;max-width:95%;animation:in .25s ease both}
+.card{align-self:stretch;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:12px 14px;font-size:13.5px;animation:in .25s ease both}
+.card .head{display:flex;justify-content:space-between;gap:8px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:6px}
+.card p{margin:4px 0}
+.card .sub{font-weight:600}
+.line-a{color:var(--ink)} .line-g{color:var(--muted)}
+.line-a b,.line-g b{font-weight:600}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.msg,.sys,.card{animation:none}}
+.controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+.ctl{font:inherit;font-size:13px;font-weight:600;border-radius:8px;padding:7px 14px;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--bg)}
+.ctl.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.ctl:disabled{opacity:.45;cursor:default}
+.count{margin-left:auto;align-self:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+aside.ledger{display:flex;flex-direction:column;gap:20px;min-width:0}
+.brief{border-left:3px solid var(--accent);padding:2px 0 2px 16px}
+.brief h3{font-family:var(--display);font-size:30px;font-weight:600;line-height:1.1;margin:0 0 6px;text-wrap:balance}
+.brief p{margin:0;color:var(--muted);max-width:60ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.panel h4{margin:0 0 10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+dl{display:grid;grid-template-columns:minmax(110px,max-content) minmax(0,1fr);gap:6px 16px;margin:0;font-size:14px}
+dt{color:var(--muted)} dd{margin:0;font-weight:500;min-width:0}
+dd.new{animation:flash 1.2s ease}
+@keyframes flash{from{background:var(--accent-soft)}to{background:transparent}}
+.empty{color:var(--muted);font-size:13px;margin:0}
+ol.actions{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:14px}
+ol.actions li{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px}
+ol.actions .tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);padding-top:2px}
+.why{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.why div{font-size:13.5px;color:var(--muted)}
+.why b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+footer{border-top:1px solid var(--line);padding-top:16px;font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <div>
+    <p class="eyebrow">21X Sports · Agent demo for Golf Traveller</p>
+    <h1>Meet Isla, your traveller's first and last call</h1>
+    <p class="lede">Seven runs across the journey: a new enquiry, a quiet proposal, a club trip, the 2027 Ryder Cup, departure prep, a morning in St Andrews and the trip home. Pick one and step through it.</p>
+  </div>
+  <div class="legend" aria-label="Channel status">
+    <span class="chip"><span class="dot"></span><b>Live today</b> voice · text · email</span>
+    <span class="chip"><span class="dot dev"></span><b>In development</b> web chat · RCS</span>
+  </div>
+</header>
+
+<nav aria-label="Scenarios">
+  <div class="groups" id="groups"></div>
+</nav>
+
+<div class="stage">
+  <section class="phone" aria-label="Conversation">
+    <div class="phone-top">
+      <div class="avatar" aria-hidden="true">GT</div>
+      <div class="who"><b>Isla · Golf Traveller</b><span id="chan">Text, call and email</span></div>
+    </div>
+    <div class="thread" id="thread" aria-live="polite"></div>
+    <div class="controls">
+      <button class="ctl" id="replay" type="button">Replay</button>
+      <button class="ctl ghost" id="step" type="button">Next step</button>
+      <button class="ctl ghost" id="all" type="button">Show all</button>
+      <span class="count" id="count"></span>
+    </div>
+  </section>
+
+  <aside class="ledger">
+    <div class="brief"><p class="eyebrow" id="kicker"></p><h3 id="title"></h3><p id="setup"></p></div>
+    <div class="panel"><h4>Saved to your CRM</h4><dl id="fields"></dl><p class="empty" id="fields-empty">Fields appear as the conversation fills them.</p></div>
+    <div class="panel"><h4>What the agent did</h4><ol class="actions" id="actions"></ol><p class="empty" id="actions-empty">Actions appear as they happen.</p></div>
+    <div class="panel"><h4>Why it matters</h4><p id="why" style="margin:0"></p></div>
+  </aside>
+</div>
+
+<footer>
+  <span>Illustrative demo with fictional travellers, clubs and staff. Answers come only from Golf Traveller's proposals, itineraries and published pages; prices and availability are never invented.</span>
+  <span>Built by 21X Sports for discussion with Golf Traveller · October 2026</span>
+</footer>
+</div>
+
+<script>
+const RUNS = [
+ {id:'enquiry', group:'Bespoke journeys', label:'New enquiry at 9:40 p.m.', kicker:'Use case 01 · Speed to lead',
+  title:'A website enquiry from Boston, answered in a minute',
+  setup:'James asks about Scotland for summer 2027 through the website form. The UK office is closed.',
+  why:'The brief is complete before a curator spends a minute, and the call is already on the calendar.',
+  steps:[
+   {t:'sys', text:'Website enquiry received · 9:40 p.m. ET · "Scotland, summer 2027, group of four"', act:['Trigger','New enquiry from golftraveller.com form']},
+   {t:'agent', ch:'Text', text:"Hi James, it's Isla from Golf Traveller. Thanks for your Scotland enquiry. So your curator starts with the right brief: how many are travelling, and roughly when?", act:['Text','First reply sent 48 seconds after the form']},
+   {t:'guest', text:"Sure. Four of us, late June. Two of the wives don't play.", f:{'Party':'4 travellers, 2 golfers','Dates':'Late June 2027'}},
+   {t:'agent', ch:'Text', text:'Lovely. Any must-play courses? And for the non-golfers, Edinburgh and spa days, or castles and whisky?'},
+   {t:'guest', text:'Old Course if we can, and maybe Kingsbarns. The wives want Edinburgh.', f:{'Must-plays':'Old Course (request), Kingsbarns','Partners':'Edinburgh, non-golf programme'}},
+   {t:'agent', ch:'Text', text:'Noted. The Old Course is never guaranteed, and your curator will explain the options. Our St Andrews team can call tomorrow at 10 a.m. or 2 p.m. Eastern. Which suits?'},
+   {t:'guest', text:'2 works.'},
+   {t:'agent', ch:'Text', text:"Booked for 2 p.m. Eastern. I've emailed a recap of your brief. Speak tomorrow, James.", f:{'Next step':'Curator call · tomorrow 2 p.m. ET'}, act:['Calendar','Curator call booked with St Andrews team']},
+   {t:'email', head:'Email', sub:'Your Scotland brief, ready for tomorrow', body:['Four travellers, two golfers, late June 2027.','Golf: Old Course request, Kingsbarns. Partners: Edinburgh and a non-golf programme.','Call: tomorrow, 2 p.m. Eastern, with our St Andrews team.'], act:['Email','Brief recap sent; record written to CRM']}
+  ]},
+ {id:'proposal', group:'Bespoke journeys', label:'Proposal gone quiet', kicker:'Use case 02 · Proposal to deposit',
+  title:'Six days after the Ireland proposal, no reply',
+  setup:"Priya received a southwest Ireland proposal from her curator, Fiona. She opened it twice and hasn't answered.",
+  why:'The agent finds the real hold-up (a date clash, not price) and puts Fiona back in front of Priya with the fix.',
+  steps:[
+   {t:'sys', text:'Proposal sent 6 days ago · opened twice · no reply', act:['Trigger','Follow-up rule: day 3 text, day 6 call']},
+   {t:'agent', ch:'Text', text:"Hi Priya, Isla from Golf Traveller. Fiona's Ireland plan is ready whenever you are. Any questions I can answer?", act:['Text','Day 3 follow-up, no reply']},
+   {t:'call', head:'Call · 2 min 40 s', lines:[
+     ['a',"Hi Priya, it's Isla from Golf Traveller, following up on Fiona's Ireland proposal. Is now a good moment?"],
+     ['g','Yes, sorry. We love it, but the Ballybunion day lands on my sister\'s birthday dinner in Killarney.'],
+     ['a',"That's easy to look at. Would you like Fiona to swap the order so Ballybunion falls on the Friday instead?"],
+     ['g','That would be perfect. Everything else is great.'],
+     ['a','I\'ll pass that to Fiona now. Can she call tomorrow at 11 to confirm the change and the deposit?']],
+    f:{'Objection':'Date clash (Ballybunion day), not price','Sentiment':'Positive, ready to book'}, act:['Call','Day 6 call; hold-up captured']},
+   {t:'guest', ch:'Text', text:'11 tomorrow works. Thanks Isla!'},
+   {t:'agent', ch:'Text', text:'Done. Fiona will call at 11. Enjoy your evening.', f:{'Next step':'Fiona call · revise day order, take deposit'}, act:['Hand-off','Fiona notified with call summary']}
+  ]},
+ {id:'club', group:'Clubs and partners', label:'Club member trip', kicker:'Use case 03 · Club programmes',
+  title:"Filling Ridgeline Country Club's Scotland week",
+  setup:'Ridgeline (a fictional club) announced a May 2027 links week with Golf Traveller. Tom ticked "interested" in the club email.',
+  why:'The pro shop stops chasing. Every member gets a quick, accurate answer and the roster builds itself.',
+  steps:[
+   {t:'sys', text:'Club interest list · 31 members · 12 places held so far', act:['Trigger','Member raised hand in club email']},
+   {t:'agent', ch:'Text', text:"Hi Tom, it's Isla with Golf Traveller, working with the Ridgeline golf shop on May's Scotland week. Want me to hold you a place?"},
+   {t:'guest', text:"Maybe. Can my wife come if she doesn't play?"},
+   {t:'agent', ch:'Text', text:'Yes. The trip brief includes a partner programme on golf days, with St Andrews and Edinburgh outings. Partners join every dinner.'},
+   {t:'guest', text:"Great. Hold two, king room please, and pair me with Dave Ellis if he's going.", f:{'Member':'Tom R. + spouse (non-golfer)','Room':'King','Pairing request':'Dave Ellis'}},
+   {t:'agent', ch:'Text', text:"Done. Two places held for you. Dave's on the list too, so I've noted the pairing. Golf Traveller will send the deposit details by email.", act:['Roster','Places held: 14 of 20; pairing noted']},
+   {t:'sys', text:'Roster shared with Ridgeline pro shop · 14 of 20 places held', act:['Hand-off','Deposit request queued for Golf Traveller team']}
+  ]},
+ {id:'ryder', group:'Championship events', label:'Ryder Cup 2027 interest', kicker:'Use case 04 · Events',
+  title:'Working the Ryder Cup list the day it opens',
+  setup:'Mike registered interest in the 2027 Ryder Cup at Adare Manor (17–19 September) on golftraveller.com.',
+  why:"The events team gets a qualified, ready buyer with golf add-ons already discussed, while the list is still hot.",
+  steps:[
+   {t:'sys', text:'Ryder Cup 2027 interest form · Mike D., Charlotte NC', act:['Trigger','Event interest registered']},
+   {t:'agent', ch:'Text', text:"Hi Mike, Isla from Golf Traveller. Thanks for registering for the 2027 Ryder Cup at Adare Manor. Three quick questions so our events team can come back with the right package?"},
+   {t:'guest', text:'Sure. Six of us. Want all three match days if possible.', f:{'Party':'6 travellers','Match days':'All three (Fri–Sun)'}},
+   {t:'agent', ch:'Text', text:'Got it. Our official ticket-inclusive packages are based in Cork at The River Lee. Would your group like golf of its own before or after the matches?'},
+   {t:'guest', text:"Yes, two rounds after. Somewhere on the coast.", f:{'Add-on golf':'2 rounds after the matches, coastal'}},
+   {t:'agent', ch:'Text', text:"Lovely. I'll pass this to our events team now. Can they call you today at 3 p.m. Eastern to walk through availability?"},
+   {t:'guest', text:'3 is good.'},
+   {t:'agent', ch:'Text', text:"Booked. They'll have your details in front of them.", f:{'Next step':'Events team call · today 3 p.m. ET'}, act:['Hand-off','Qualified lead routed to events team']}
+  ]},
+ {id:'pretrip', group:'Before and during', label:'Three weeks to go', kicker:'Use case 05 · Departure prep',
+  title:'Getting the Hendersons ready to fly',
+  setup:'A bespoke Scotland trip leaves in 21 days. Flights, a handicap certificate and app sign-up are still missing.',
+  why:'Nothing is chased by hand, and the trip owner only hears about what is still open.',
+  steps:[
+   {t:'sys', text:'Countdown · 21 days to departure · 3 items open', act:['Trigger','Pre-trip checklist rule']},
+   {t:'agent', ch:'Text', text:"Hi Claire, Isla from Golf Traveller. Three weeks to Scotland! Two quick things: your flight numbers, and a photo of each golfer's handicap certificate for the clubs that ask."},
+   {t:'guest', text:'BA 212 into Heathrow on the 14th, then to Edinburgh. Will send the certificates tonight.', f:{'Flights':'BA 212 → LHR, connection to EDI','Handicap certs':'Promised tonight'}},
+   {t:'agent', ch:'Text', text:'Thank you. Last one: your itinerary lives in the new Golf Traveller app. Have you created your account yet? You\'ll need a new one even if you used the old app.'},
+   {t:'guest', text:"Not yet. Where's the link?"},
+   {t:'agent', ch:'Text', text:"I'll email your personal link now. It connects your trip as soon as you sign in.", f:{'App':'Link sent'}, act:['Email','Personal app link sent']},
+   {t:'sys', text:'Next day · certificates received · app account active', act:['Status','Checklist complete; trip owner notified']}
+  ]},
+ {id:'ontrip', group:'Before and during', label:'A morning in St Andrews', kicker:'Use case 06 · On-trip concierge',
+  title:'7:02 a.m., the day of Kingsbarns',
+  setup:"Susan's group is on day three. Their host, Callum, is with another group this morning.",
+  why:'Routine questions are answered instantly from the itinerary, and the host only handles what needs a person.',
+  steps:[
+   {t:'guest', ch:'Text', text:'Morning Isla. What time is our car to Kingsbarns?'},
+   {t:'agent', ch:'Text', text:'Morning Susan. Your driver collects at 8:15 from the front of the hotel for your 9:40 tee time. Showers should clear by about 11, so pack waterproofs for the front nine.', act:['Lookup','Itinerary: transfer + tee time; weather check']},
+   {t:'guest', text:"Perfect. Could we move tonight's dinner to 8:30?"},
+   {t:'agent', ch:'Text', text:"I've asked Callum, your host, to move it. He'll confirm here within the hour.", f:{'Request':'Dinner 8:30 tonight (pending host)'}, act:['Hand-off','Callum notified with the thread']},
+   {t:'sys', text:'8:41 a.m. · Callum confirms the new time'},
+   {t:'agent', ch:'Text', text:'All set, dinner is now 8:30. Enjoy Kingsbarns. The 15th, the par 3 over the water, is the one everyone photographs.', f:{'Request':'Dinner moved to 8:30 (confirmed)'}},
+   {t:'call', head:'Call · 11:52 p.m. · 1 min 05 s', lines:[
+     ['g','Hi, I left my rangefinder in the car this afternoon. Is there any way to get it back?'],
+     ['a',"Sorry to hear that. I've logged it for the transfer company and Callum. They'll message you first thing tomorrow with where to collect it."]],
+    act:['Call','Late-night call answered; lost item logged']}
+  ]},
+ {id:'post', group:'After the trip', label:'Home again', kicker:'Use case 07 · After the trip',
+  title:'One week after Scotland',
+  setup:'James and his group are home. Golf Traveller would like feedback, a testimonial and the next trip.',
+  why:'Feedback arrives as a conversation, and the next trip is in the pipeline before memories fade.',
+  steps:[
+   {t:'sys', text:'7 days after return', act:['Trigger','Post-trip check-in rule']},
+   {t:'agent', ch:'Text', text:"Welcome home, James. How was Scotland? What's the one moment you'll still be talking about next year?"},
+   {t:'guest', text:'Honestly the Old Course ballot coming through. And dinner in the East Neuk.', f:{'Highlight':'Old Course, East Neuk dinner'}},
+   {t:'agent', ch:'Text', text:'That makes our day. Anything we could have done better?'},
+   {t:'guest', text:'The transfer on day two was 20 minutes late.', f:{'Issue':'Day 2 transfer 20 min late'}, act:['Flag','Shared with operations']},
+   {t:'agent', ch:'Text', text:"Thank you for telling us. I've passed that to our operations team. Would you be happy for us to share a line about your trip, with your first name only?"},
+   {t:'guest', text:"Sure. And we're already talking about Ireland in 2028.", f:{'Testimonial':'Permission given (first name)','Next trip':'Ireland, 2028, same group'}},
+   {t:'agent', ch:'Text', text:"Wonderful. I'll have Fiona, our Ireland specialist, reach out in the autumn. Who else in your group should she include?", act:['Pipeline','2028 Ireland enquiry created']}
+  ]}
+];
+
+const $ = id => document.getElementById(id);
+let run = RUNS[0], shown = 0, timer = null;
+const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function buildTabs(){
+  const groups = [...new Set(RUNS.map(r => r.group))];
+  $('groups').innerHTML = '';
+  groups.forEach(g => {
+    const wrap = document.createElement('div'); wrap.className = 'group';
+    const h = document.createElement('h2'); h.textContent = g; wrap.appendChild(h);
+    const tabs = document.createElement('div'); tabs.className = 'tabs'; tabs.setAttribute('role','tablist');
+    RUNS.filter(r => r.group === g).forEach(r => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'tab'; b.id = 'tab-' + r.id;
+      b.setAttribute('role','tab'); b.textContent = r.label;
+      b.setAttribute('aria-selected', r === run ? 'true' : 'false');
+      b.addEventListener('click', () => select(r, true));
+      tabs.appendChild(b);
+    });
+    wrap.appendChild(tabs); $('groups').appendChild(wrap);
+  });
+}
+
+function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+
+function renderStep(s){
+  if(s.t === 'sys') return el('div','sys', s.text);
+  if(s.t === 'agent' || s.t === 'guest'){
+    const m = el('div','msg ' + s.t);
+    const meta = el('span','meta', (s.t === 'agent' ? 'Isla' : 'Traveller') + ' · ' + (s.ch || 'Text'));
+    m.appendChild(meta); m.appendChild(document.createTextNode(s.text)); return m;
+  }
+  const c = el('div','card');
+  const head = el('div','head'); head.appendChild(el('span',null,s.head)); head.appendChild(el('span',null, s.t === 'call' ? 'Voice · live' : 'Email · live'));
+  c.appendChild(head);
+  if(s.t === 'email'){
+    c.appendChild(el('p','sub', s.sub));
+    s.body.forEach(b => c.appendChild(el('p',null,b)));
+  } else {
+    s.lines.forEach(([who, text]) => {
+      const p = el('p', who === 'a' ? 'line-a' : 'line-g');
+      const b = el('b', null, who === 'a' ? 'Isla: ' : 'Traveller: ');
+      p.appendChild(b); p.appendChild(document.createTextNode(text)); c.appendChild(p);
+    });
+  }
+  return c;
+}
+
+function renderLedger(upto, flashLast){
+  const fields = {}, acts = [];
+  run.steps.slice(0, upto).forEach((s, i) => {
+    if(s.f) Object.entries(s.f).forEach(([k,v]) => fields[k] = {v, i});
+    if(s.act) acts.push(s.act);
+  });
+  const dl = $('fields'); dl.innerHTML = '';
+  Object.entries(fields).forEach(([k,{v,i}]) => {
+    dl.appendChild(el('dt',null,k));
+    const dd = el('dd', flashLast && i === upto - 1 ? 'new' : null, v); dl.appendChild(dd);
+  });
+  $('fields-empty').hidden = Object.keys(fields).length > 0;
+  const ol = $('actions'); ol.innerHTML = '';
+  acts.forEach(([tag, text]) => { const li = el('li'); li.appendChild(el('span','tag',tag)); li.appendChild(el('span',null,text)); ol.appendChild(li); });
+  $('actions-empty').hidden = acts.length > 0;
+}
+
+function render(upto, flash){
+  shown = upto;
+  const th = $('thread'); th.innerHTML = '';
+  run.steps.slice(0, upto).forEach(s => th.appendChild(renderStep(s)));
+  th.scrollTop = th.scrollHeight;
+  renderLedger(upto, flash);
+  $('count').textContent = 'Step ' + upto + ' of ' + run.steps.length;
+  $('step').disabled = upto >= run.steps.length;
+  $('all').disabled = upto >= run.steps.length;
+}
+
+function stop(){ if(timer){ clearInterval(timer); timer = null; } }
+
+function select(r, animate){
+  stop(); run = r;
+  document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.id === 'tab-' + r.id ? 'true' : 'false'));
+  $('kicker').textContent = r.kicker; $('title').textContent = r.title; $('setup').textContent = r.setup; $('why').textContent = r.why;
+  const chans = new Set(r.steps.map(s => s.t === 'call' ? 'Call' : s.t === 'email' ? 'Email' : (s.ch || null)).filter(Boolean));
+  $('chan').textContent = [...chans].join(' · ') || 'Text';
+  if(animate && !reduce) play(); else render(r.steps.length, false);
+}
+
+function play(){
+  stop(); render(0, false);
+  timer = setInterval(() => { if(shown >= run.steps.length){ stop(); return; } render(shown + 1, true); }, 1100);
+}
+
+$('replay').addEventListener('click', () => reduce ? (stop(), render(1, true)) : play());
+$('step').addEventListener('click', () => { stop(); if(shown < run.steps.length) render(shown + 1, true); });
+$('all').addEventListener('click', () => { stop(); render(run.steps.length, false); });
+
+buildTabs();
+const startId = (location.hash || '').slice(1);
+select(RUNS.find(r => r.id === startId) || RUNS[0], false);
+</script>
+</body>
+</html>
